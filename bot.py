@@ -688,6 +688,57 @@ async def givevip(message: Message):
     except:
         pass
 
+# ================= REMOVE VIP =================
+
+@dp.message(Command("removevip"))
+async def removevip(message: Message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    args = message.text.split()
+
+    if len(args) != 2:
+
+        await message.answer(
+            "Использование:\n"
+            "/removevip user_id"
+        )
+        return
+
+    try:
+
+        user_id = int(args[1])
+
+    except:
+
+        await message.answer(
+            "❌ ID должен быть числом"
+        )
+        return
+
+    await db.execute("""
+    UPDATE users
+    SET vip = 0
+    WHERE user_id = $1
+    """, user_id)
+
+    await message.answer(
+        f"❌ VIP снят у игрока {user_id}"
+    )
+
+    # Сообщение игроку
+
+    try:
+
+        await bot.send_message(
+            user_id,
+            "❌ Ваш VIP был снят"
+        )
+
+    except:
+        pass
+
 # ================= BROADCAST =================
 
 @dp.message(Command("broadcast"))
