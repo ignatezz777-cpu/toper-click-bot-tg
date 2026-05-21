@@ -58,9 +58,17 @@ def vip_multiplier(vip):
 # ================= DATABASE =================
 
 async def db_start():
+
     global db
 
-    db = await asyncpg.connect(DATABASE_URL)
+    DATABASE_URL = os.getenv(
+        "DATABASE_URL"
+    )
+
+    db = await asyncpg.connect(
+        DATABASE_URL,
+        ssl="require"
+    )
 
     await db.execute("""
     CREATE TABLE IF NOT EXISTS users (
