@@ -438,26 +438,36 @@ async def event(message: Message):
 
     args = message.text.split()
 
-    if len(args) != 2:
+    if len(args) != 3:
+
         await message.answer(
-            "/event множитель"
+            "Использование:\n"
+            "/event множитель секунды\n\n"
+            "Пример:\n"
+            "/event 5 60"
         )
         return
 
-    EVENT_MULTIPLIER = int(args[1])
+    try:
 
-    # Сообщение админу
-    await message.answer(
-        f"🎉 EVENT x{EVENT_MULTIPLIER} включен"
-    )
+        multiplier = int(args[1])
+        seconds = int(args[2])
 
-    # Рассылка игрокам
+    except:
+
+        await message.answer(
+            "❌ Ошибка в числах"
+        )
+        return
+
+    EVENT_MULTIPLIER = multiplier
+
     users = await db.fetch("""
     SELECT user_id
     FROM users
     """)
 
-    success = 0
+    # ================= START EVENT =================
 
     for user in users:
 
@@ -465,18 +475,47 @@ async def event(message: Message):
 
             await bot.send_message(
                 user["user_id"],
-                f"🎉 НАЧАЛСЯ EVENT!\n\n"
-                f"🔥 Множитель: x{EVENT_MULTIPLIER}\n\n"
-                f"💰 Зарабатывайте больше монет!"
+                f"🎉 EVENT НАЧАЛСЯ!\n\n"
+                f"🔥 Множитель: x{multiplier}\n"
+                f"⏳ Длительность: {seconds} секунд"
             )
-
-            success += 1
 
         except:
             pass
 
     await message.answer(
-        f"✅ Уведомление отправлено {success} игрокам"
+        f"✅ EVENT x{multiplier} "
+        f"запущен на {seconds} секунд"
+    )
+
+    # ================= TIMER =================
+
+    await asyncio.sleep(seconds)
+
+    EVENT_MULTIPLIER = 1
+
+    # ================= STOP EVENT =================
+
+    users = await db.fetch("""
+    SELECT user_id
+    FROM users
+    """)
+
+    for user in users:
+
+        try:
+
+            await bot.send_message(
+                user["user_id"],
+                "❌ EVENT завершен\n\n"
+                "💰 Множитель снова x1"
+            )
+
+        except:
+            pass
+
+    await message.answer(
+        "✅ EVENT автоматически завершен"
     )
 
 # ================= STOP EVENT =================
