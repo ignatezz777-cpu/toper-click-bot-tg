@@ -135,10 +135,8 @@ async def create_user(user):
 
 async def get_user(user_id):
 
-    await create_user(user_id)
-
     user = await db.fetchrow("""
-    SELECT *
+    SELECT money, power, autoclick, vip
     FROM users
     WHERE user_id = $1
     """, user_id)
