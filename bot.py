@@ -202,7 +202,9 @@ def menu():
 @dp.message(Command("start"))
 async def start(message: Message):
 
-    await create_user(message.from_user)
+    await create_user(
+        message.from_user
+    )
 
     await message.answer(
         "🎮 CLICKER BOT\n\nДобро пожаловать!",
@@ -213,6 +215,8 @@ async def start(message: Message):
 
 @dp.callback_query(F.data == "click")
 async def click(callback: CallbackQuery):
+
+    await create_user(callback.from_user)
 
     global EVENT_MULTIPLIER
 
@@ -250,6 +254,8 @@ async def click(callback: CallbackQuery):
 @dp.callback_query(F.data == "profile")
 async def profile(callback: CallbackQuery):
 
+    await create_user(callback.from_user)
+
     user = await get_user(callback.from_user.id)
 
     await callback.message.edit_text(
@@ -265,6 +271,8 @@ async def profile(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "upgrade")
 async def upgrade(callback: CallbackQuery):
+
+    await create_user(callback.from_user)
 
     user_id = callback.from_user.id
 
@@ -303,6 +311,8 @@ async def upgrade(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "autoclick")
 async def autoclick(callback: CallbackQuery):
+
+    await create_user(callback.from_user)
 
     user_id = callback.from_user.id
 
