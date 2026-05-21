@@ -181,6 +181,18 @@ def menu():
                 )
              ],
 
+             [
+                InlineKeyboardButton(
+                    text="💸 Перевод",
+                    callback_data="pay_menu"
+                ),
+
+                InlineKeyboardButton(
+                    text="⚔ PvP",
+                    callback_data="duel_menu"
+                )
+            ],
+
             [
                 InlineKeyboardButton(
                     text="📊 Профиль",
@@ -1072,6 +1084,241 @@ async def promo_button(callback: CallbackQuery):
         "/promo код\n\n"
         "Пример:\n"
         "/promo free",
+        reply_markup=menu()
+    )
+
+# ================= TRANSFER MONEY =================
+
+@dp.message(Command("pay"))
+async def pay(message: Message):
+
+    await create_user(
+        message.from_user
+    )
+
+    args = message.text.split()
+
+    if len(args) != 3:
+
+        await message.answer(
+            "💸 Использование:\n"
+            "/pay user_id amount"
+        )
+        return
+
+    try:
+
+        target_id = int(args[1])
+        amount = int(args[2])
+
+    except:
+
+        await message.answer(
+            "❌ Ошибка в данных"
+        )
+        return
+
+    if amount <= 0:
+
+        await message.answer(
+            "❌ Сумма должна быть больше 0"
+        )
+        return
+
+    sender_id = message.from_user.id
+
+    if sender_id == target_id:
+
+        await message.answer(
+            "❌ Нельзя переводить себе"
+        )
+        return
+
+    sender = await get_user(sender_id)
+
+    money = sender["money"]
+
+    if money < amount:
+
+        await message.answer(
+            "❌ Недостаточно монет"
+        )
+        return
+
+    await db.execute("""
+    UPDATE users
+    SET money = money - $1
+    WHERE user_id = $2
+    """, amount, sender_id)
+
+    await db.execute("""
+    UPDATE users
+    SET money = money + $1
+    WHERE user_id = $2
+    """, amount, target_id)
+
+    await message.answer(
+        f"💸 Вы перевели {amount} монет"
+    )
+
+    try:
+
+        await bot.send_message(
+            target_id,
+            f"💰 Вам перевели {amount} монет!"
+        )
+
+    except:
+        pass
+
+# ================= DUEL =================
+
+@dp.message(Command("duel"))
+async def duel(message: Message):
+
+    await create_user(
+        message.from_user
+    )
+
+    args = message.text.split()
+
+    if len(args) != 3:
+
+        await message.answer(
+            "⚔ Использование:\n"
+            "/duel user_id amount"
+        )
+        return
+
+    try:
+
+        target_id = int(args[1])
+        amount = int(args[2])
+
+    except:
+
+        await message.answer(
+            "❌ Ошибка в данных"
+        )
+        return
+
+    if amount <= 0:
+
+        await message.answer(
+            "❌ Ставка должна быть больше 0"
+        )
+        return
+
+    user1 = message.from_user.id
+
+    if user1 == target_id:
+
+        await message.answer(
+            "❌ Нельзя дуэлиться с собой"
+        )
+        return
+
+    player1 = await get_user(user1)
+    player2 = await get_user(target_id)
+
+    if not player2:
+
+        await message.answer(
+            "❌ Игрок не найден"
+        )
+        return
+
+    if player1["money"] < amount:
+
+        await message.answer(
+            "❌ У вас недостаточно монет"
+        )
+        return
+
+    if player2["money"] < amount:
+
+        await message.answer(
+            "❌ У игрока недостаточно монет"
+        )
+        return
+
+    # Победитель
+
+    winner = random.choice(
+        [user1, target_id]
+    )
+
+    loser = (
+        target_id
+        if winner == user1
+        else user1
+    )
+
+    await db.execute("""
+    UPDATE users
+    SET money = money + $1
+    WHERE user_id = $2
+    """, amount, winner)
+
+    await db.execute("""
+    UPDATE users
+    SET money = money - $1
+    WHERE user_id = $2
+    """, amount, loser)
+
+    if winner == user1:
+
+        text = (
+            f"⚔ ВЫ ПОБЕДИЛИ!\n\n"
+            f"💰 Вы получили {amount} монет"
+        )
+
+    else:
+
+        text = (
+            f"💀 ВЫ ПРОИГРАЛИ!\n\n"
+            f"💸 Потеряно {amount} монет"
+        )
+
+    await message.answer(text)
+
+    try:
+
+        await bot.send_message(
+            target_id,
+            f"⚔ Дуэль завершена!\n\n"
+            f"🏆 Победитель: {winner}\n"
+            f"💰 Ставка: {amount}"
+        )
+
+    except:
+        pass
+
+# ================= PAY BUTTON =================
+
+@dp.callback_query(F.data == "pay_menu")
+async def pay_menu(callback: CallbackQuery):
+
+    await callback.message.edit_text(
+        "💸 ПЕРЕВОД МОНЕТ\n\n"
+        "Команда:\n"
+        "/pay user_id amount\n\n"
+        "Пример:\n"
+        "/pay 123456789 10000",
+        reply_markup=menu()
+    )
+
+# ================= DUEL BUTTON =================
+
+@dp.callback_query(F.data == "duel_menu")
+async def duel_menu(callback: CallbackQuery):
+
+    await callback.message.edit_text(
+        "⚔ PvP ДУЭЛЬ\n\n"
+        "Команда:\n"
+        "/duel user_id amount\n\n"
+        "Пример:\n"
+        "/duel 123456789 50000",
         reply_markup=menu()
     )
 
