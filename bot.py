@@ -831,6 +831,222 @@ async def admin_broadcast(callback: CallbackQuery):
         reply_markup=admin_menu()
     )
 
+# ================= CASINO =================
+
+@dp.message(Command("casino"))
+async def casino(message: Message):
+
+    await create_user(
+        message.from_user
+    )
+
+    args = message.text.split()
+
+    if len(args) != 2:
+
+        await message.answer(
+            "🎰 Использование:\n"
+            "/casino ставка"
+        )
+        return
+
+    try:
+        bet = int(args[1])
+
+    except:
+
+        await message.answer(
+            "❌ Ставка должна быть числом"
+        )
+        return
+
+    if bet <= 0:
+
+        await message.answer(
+            "❌ Ставка должна быть больше 0"
+        )
+        return
+
+    user_id = message.from_user.id
+
+    user = await get_user(user_id)
+
+    money = user["money"]
+
+    if money < bet:
+
+        await message.answer(
+            "❌ Недостаточно монет"
+        )
+        return
+
+    # 20% шанс
+
+    if random.randint(1, 100) <= 20:
+
+        win = bet * 2
+
+        money += win
+
+        text = (
+            f"🎰 ВЫ ВЫИГРАЛИ!\n\n"
+            f"💰 Выигрыш: {win}\n"
+            f"💵 Баланс: {money}"
+        )
+
+    else:
+
+        money -= bet
+
+        text = (
+            f"💀 ВЫ ПРОИГРАЛИ\n\n"
+            f"💸 Потеряно: {bet}\n"
+            f"💵 Баланс: {money}"
+        )
+
+    await db.execute("""
+    UPDATE users
+    SET money = $1
+    WHERE user_id = $2
+    """, money, user_id)
+
+    await message.answer(text)
+
+# ================= PROMO =================
+
+@dp.message(Command("promo"))
+async def promo(message: Message):
+
+    await create_user(
+        message.from_user
+    )
+
+    args = message.text.split()
+
+    if len(args) != 2:
+
+        await message.answer(
+            "/promo code"
+        )
+        return
+
+    code = args[1].lower()
+
+    user_id = message.from_user.id
+
+    promo = await db.fetchrow("""
+    SELECT *
+    FROM promocodes
+    WHERE code = $1
+    """, code)
+
+    if not promo:
+
+        await message.answer(
+            "❌ Промокод не найден"
+        )
+        return
+
+    used = await db.fetchrow("""
+    SELECT *
+    FROM promo_uses
+    WHERE user_id = $1
+    AND code = $2
+    """, user_id, code)
+
+    if used:
+
+        await message.answer(
+            "❌ Вы уже использовали промокод"
+        )
+        return
+
+    reward = promo["reward"]
+    activations = promo["activations"]
+
+    await db.execute("""
+    UPDATE users
+    SET money = money + $1
+    WHERE user_id = $2
+    """, reward, user_id)
+
+    await db.execute("""
+    INSERT INTO promo_uses (
+        user_id,
+        code
+    )
+    VALUES ($1, $2)
+    """, user_id, code)
+
+    activations -= 1
+
+    if activations <= 0:
+
+        await db.execute("""
+        DELETE FROM promocodes
+        WHERE code = $1
+        """, code)
+
+    else:
+
+        await db.execute("""
+        UPDATE promocodes
+        SET activations = $1
+        WHERE code = $2
+        """, activations, code)
+
+    await message.answer(
+        f"🎁 Промокод активирован!\n\n"
+        f"+{reward} монет"
+    )
+
+# ================= CREATE PROMO =================
+
+@dp.message(Command("createpromo"))
+async def createpromo(message: Message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    args = message.text.split()
+
+    if len(args) != 4:
+
+        await message.answer(
+            "/createpromo code reward activations"
+        )
+        return
+
+    code = args[1].lower()
+
+    try:
+
+        reward = int(args[2])
+        activations = int(args[3])
+
+    except:
+
+        await message.answer(
+            "❌ Ошибка в числах"
+        )
+        return
+
+    await db.execute("""
+    INSERT INTO promocodes (
+        code,
+        reward,
+        activations
+    )
+    VALUES ($1, $2, $3)
+    """, code, reward, activations)
+
+    await message.answer(
+        f"🎁 Промокод создан!\n\n"
+        f"Код: {code}\n"
+        f"Награда: {reward}\n"
+        f"Активаций: {activations}"
+        )
+
 # ================= MAIN =================
 
 async def main():
