@@ -73,6 +73,7 @@ async def db_start():
     await db.execute("""
     CREATE TABLE IF NOT EXISTS users (
         user_id BIGINT PRIMARY KEY,
+        username TEXT,
         money BIGINT DEFAULT 0,
         power BIGINT DEFAULT 1,
         autoclick BIGINT DEFAULT 0,
@@ -97,19 +98,35 @@ async def db_start():
 
 # ================= USER =================
 
-async def create_user(user_id):
+async def create_user(user):
 
-    user = await db.fetchrow("""
-    SELECT * FROM users
+    user_id = user.id
+
+    username = user.username
+
+    check = await db.fetchrow("""
+    SELECT *
+    FROM users
     WHERE user_id = $1
     """, user_id)
 
-    if user is None:
+    if not check:
 
         await db.execute("""
-        INSERT INTO users (user_id)
-        VALUES ($1)
-        """, user_id)
+        INSERT INTO users (
+            user_id,
+            username
+        )
+        VALUES ($1, $2)
+        """, user_id, username)
+
+    else:
+
+        await db.execute("""
+        UPDATE users
+        SET username = $1
+        WHERE user_id = $2
+        """, username, user_id)
 
 async def get_user(user_id):
 
@@ -153,15 +170,13 @@ def menu():
                 InlineKeyboardButton(
                     text="🎰 Казино",
                     callback_data="casino"
-                )
-            ],
-
-            [
+                ),
+    
                 InlineKeyboardButton(
                     text="🎁 Промокод",
                     callback_data="promo_menu"
                 )
-            ],
+             ],
 
             [
                 InlineKeyboardButton(
@@ -182,7 +197,7 @@ def menu():
 @dp.message(Command("start"))
 async def start(message: Message):
 
-    await create_user(message.from_user.id)
+    await create_user(message.from_user)
 
     await message.answer(
         "🎮 CLICKER BOT\n\nДобро пожаловать!",
@@ -352,10 +367,10 @@ async def autoclick_loop():
 async def top(callback: CallbackQuery):
 
     users = await db.fetch("""
-    SELECT user_id, money
+    SELECT username, user_id, money
     FROM users
     ORDER BY money DESC
-    LIMIT 10
+    LIMIT 5
     """)
 
     text = "🏆 ТОП ИГРОКОВ\n\n"
@@ -364,17 +379,26 @@ async def top(callback: CallbackQuery):
 
     for user in users:
 
+        username = user["username"]
+        user_id = user["user_id"]
+        money = user["money"]
+
+        if username:
+            name = f"@{username}"
+        else:
+            name = f"<code>{user_id}</code>"
+
         text += (
-            f"{place}. "
-            f"<code>{user['user_id']}</code> — "
-            f"{user['money']} монет\n"
+            f"{place}. {name} — "
+            f"{money} монет\n"
         )
 
         place += 1
 
     await callback.message.edit_text(
         text,
-        reply_markup=menu()
+        reply_markup=menu(),
+        parse_mode="HTML"
     )
 
 # ================= EVENT =================
