@@ -1047,6 +1047,34 @@ async def createpromo(message: Message):
         f"Активаций: {activations}"
         )
 
+# ================= CASINO BUTTON =================
+
+@dp.callback_query(F.data == "casino")
+async def casino_button(callback: CallbackQuery):
+
+    await callback.message.edit_text(
+        "🎰 КАЗИНО\n\n"
+        "Использование:\n"
+        "/casino ставка\n\n"
+        "Пример:\n"
+        "/casino 100",
+        reply_markup=menu()
+    )
+
+# ================= PROMO BUTTON =================
+
+@dp.callback_query(F.data == "promo_menu")
+async def promo_button(callback: CallbackQuery):
+
+    await callback.message.edit_text(
+        "🎁 ПРОМОКОД\n\n"
+        "Использование:\n"
+        "/promo код\n\n"
+        "Пример:\n"
+        "/promo free",
+        reply_markup=menu()
+    )
+
 # ================= MAIN =================
 
 async def main():
