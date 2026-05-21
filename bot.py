@@ -71,6 +71,11 @@ async def db_start():
     )
 
     await db.execute("""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS username TEXT
+    """)
+
+    await db.execute("""
     CREATE TABLE IF NOT EXISTS users (
         user_id BIGINT PRIMARY KEY,
         username TEXT,
